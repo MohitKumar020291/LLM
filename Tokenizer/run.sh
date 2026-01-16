@@ -13,6 +13,7 @@ for arg in "$@"; do
     TRAIN_BPE=*) TRAIN_BPE="${arg#*=}" ;;
     CORPUS_PATH=*) CORPUS_PATH="${arg#*=}" ;;
     CORPUS_URLS=*) CORPUS_URLS="${arg#*=}" ;;
+    VOCAB_SIZE=*) VOCAB_SIZE="${arg#*=}" ;;
   esac
 done
 
@@ -23,7 +24,7 @@ if [ "$RUN_TYPE" == "cli" ]; then
       file_name="Tokenizer/train"
       file_name="${file_name//\//.}"
       echo $file_name
-      python3 -m $file_name +corpus_path=$CORPUS_PATH +corpus_urls=$CORPUS_URLS
+      python3 -m $file_name +corpus_path=$CORPUS_PATH +corpus_urls=$CORPUS_URLS +vocab_size=$VOCAB_SIZE
     elif [ "$TRAIN_STACKED_TOKENIZER" == "true" ]; then
       python3 $base_dir/Tokenizer/Experiment/stacked_tokenizer.py +model_name=$MODEL_NAME
     fi

@@ -1,0 +1,1 @@
+This folder contains .txt files read my webpages
