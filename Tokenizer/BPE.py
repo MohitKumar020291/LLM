@@ -2,6 +2,7 @@ import hydra
 import os
 from omegaconf import DictConfig
 import regex
+from typing import Tuple, List, Dict, Union
 
 class Tokenizer:
     def __init__(self, corpus, vocab_size: int = 276):
@@ -9,21 +10,35 @@ class Tokenizer:
         self.vocab = {i: bytes([i]) for i in range(256)} # this version is cleaner as we work
         self.vocab_size = vocab_size
 
-    def train_encode(self, string: list[str]) -> list[int]:
+    def train_encode(self, string: list[str]) -> list[list[int]]:
         encodings = []
         for s in string:
             encodings.append(list(map(int, s.encode('utf-8'))))
         return encodings
 
-    def get_stats(self, encodings: list[list[int]]) -> list[int]:
+    def get_stats(self, encodings: Union[List[int], List[List[int]]]) -> list[int]:
         counts = dict()
+        if isinstance(encodings[0], int):
+            _type = "encoding"
+            encodings = [encodings]
         for enc in encodings:
-            for pair in zip(enc, enc[1:]):
-                counts[pair] = counts.get(pair, 0) + 1
+            try:
+                for pair in zip(enc, enc[1:]):
+                    counts[pair] = counts.get(pair, 0) + 1
+            except:
+                # for enc in encodings:
+                #     if isinstance(enc, int):
+                #         print(enc)
+                #         print(encodings)
+                #         break
+                ...
         return counts
 
-    def merge_most_common_pair_andrej(self, encodings: list, pair: tuple, idx: int):
+    def merge_most_common_pair_andrej(self, encodings: Union[List[List[int]], List[List[int]]], pair: tuple, idx: int) -> List[List[int]]:
         new_encodings = []
+        if isinstance(encodings[0], int):
+            _type = "encoding"
+            encodings = [encodings]
         for enc in encodings:
             i = 0
             new_enc = []
@@ -36,9 +51,11 @@ class Tokenizer:
                     new_enc.append(enc[i])
                     i += 1
             new_encodings.append(new_enc)
+        if _type == "encoding":
+            return new_encodings[0]
         return new_encodings
 
-    def merge(self, encodings: list[int]) -> list[int]:
+    def merge(self, encodings: list[list[int]]) -> Tuple[List[List[int]], Dict]:
         idx = 256
         num_merges = self.vocab_size - idx
         merges = dict()
@@ -55,7 +72,6 @@ class Tokenizer:
 
     def decode(self, encodings: list[int]) -> str:
         tokens: str = b"".join(self.vocab[idx] for idx in encodings) # this is string
-        print(tokens)
         text = tokens.decode("utf-8")
         return text
 
@@ -103,6 +119,10 @@ class Tokenizer:
         chunks = self.regex_splitting(corpus=self.corpus, contractions=contractions)
         encodings = self.train_encode(string=chunks)
         self.new_encodings, self.merges = self.merge(encodings)
-        print(self.new_encodings)
         for (e0, e1), idx in self.merges.items():
             self.vocab[idx] = self.vocab[e0] + self.vocab[e1]
+
+        # new_encodings were still chunked encodings
+        self.concatenated_encoding = [] # These tokens are actually wrong
+        for enc in self.new_encodings:
+            self.concatenated_encoding.extend(enc)
