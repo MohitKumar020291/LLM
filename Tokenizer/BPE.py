@@ -1,6 +1,3 @@
-import hydra
-import os
-from omegaconf import DictConfig
 import regex
 from typing import Tuple, List, Dict, Union
 
@@ -72,7 +69,7 @@ class Tokenizer:
 
     def decode(self, encodings: list[int]) -> str:
         tokens: str = b"".join(self.vocab[idx] for idx in encodings) # this is string
-        text = tokens.decode("utf-8")
+        text = tokens.decode("utf-8", errors="ignore")
         return text
 
     def encode(self, string: str) -> list[int]:
