@@ -1,4 +1,7 @@
-*./__pycache__/
+**/__pycache__/
 *.pyc
 *.pyo
 outputs/
+GPT2/Cache/
+*.pth
+*.pkl

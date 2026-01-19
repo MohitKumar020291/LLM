@@ -11,13 +11,9 @@ import os
 import pickle as pkl
 from utils import get_corpus, read_web_pages
 
-class Page:
-    """A better representation of html content"""
-
 
 @hydra.main(config_path=None, config_name=None, version_base=None)
 def main(cfg: DictConfig):
-    corpus_path = cfg.corpus_path
     try:
         corpus_urls = cfg.corpus_urls
     except:
