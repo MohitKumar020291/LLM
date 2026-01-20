@@ -1,72 +1,125 @@
-# LLM - GPT-2 Implementation with BPE Tokenizer
+# LLM: GPT-2 Implementation with BPE Tokenizer
 
-A PyTorch implementation of GPT-2 from scratch, featuring a Byte Pair Encoding (BPE) tokenizer for text preprocessing.
+A complete PyTorch implementation of GPT-2 (Generative Pre-trained Transformer 2) from scratch, including a Byte Pair Encoding (BPE) tokenizer for efficient subword tokenization.
 
-## Project Structure
+## 📋 Overview
+
+This project implements the core components of GPT-2, a state-of-the-art language model. It demonstrates:
+- Transformer architecture with multi-head self-attention
+- Efficient tokenization using BPE algorithm
+- Full training pipeline with loss evaluation and checkpointing
+- Text generation capabilities
+
+## 📁 Project Structure
 
 ```
-├── GPT2/                 # GPT-2 model implementation
-│   ├── GPT2.py          # Core model architecture (attention heads, transformers)
-│   ├── train.py         # Training script with loss evaluation
-│   └── Cache/           # Cached model checkpoints and corpus
-├── Tokenizer/           # Byte Pair Encoding tokenizer
-│   ├── BPE.py           # BPE tokenizer implementation
-│   ├── train.py         # Tokenizer training script
-│   ├── run.sh           # Shell script for running tokenizer
-│   └── Corpus/          # Training corpus for tokenizer
-├── utils.py             # Utility functions (web scraping, corpus loading)
-├── outputs/             # Training outputs and logs
-└── README.md            # This file
+LLM/
+├── GPT2/                          # GPT-2 model implementation
+│   ├── GPT2.py                    # Model architecture (attention, transformer blocks)
+│   ├── train.py                   # Training loop with evaluation and checkpointing
+│   └── Cache/                     # Cached model weights and corpus data
+├── Tokenizer/                     # Byte Pair Encoding tokenizer
+│   ├── BPE.py                     # BPE tokenizer implementation
+│   ├── train.py                   # Tokenizer training script
+│   ├── run.sh                     # Shell script for training
+│   ├── Experiment/                # Tokenizer experiments and results
+│   └── Cache/                     # Cached tokenizer vocabulary
+├── outputs/                       # Training outputs organized by date/time
+├── utils.py                       # Utility functions (web scraping, corpus loading)
+├── run.sh                         # Main entry point script
+└── README.md                      # This file
 ```
 
-## Features
+## 🎯 Key Features
 
-### GPT-2 Model (`GPT2/`)
-- **Self-Attention Heads**: Single and multi-head attention mechanisms with causal masking
-- **Transformer Blocks**: Feed-forward networks and residual connections
-- **Multi-Head Attention**: Parallel attention heads for richer feature representation
-- **Training Pipeline**: Loss estimation, batch processing, and model evaluation
+### GPT-2 Model Architecture (`GPT2/`)
+- **Transformer Blocks**: Attention layers with feed-forward networks and residual connections
+- **Self-Attention Heads**: 
+  - Single attention head with Q, K, V projections
+  - Multi-head attention combining multiple heads in parallel
+  - Causal masking for autoregressive generation
+- **Positional Encoding**: Token position awareness within context windows
+- **Dropout Regularization**: Prevents overfitting with configurable dropout rates
+- **Training Pipeline**: 
+  - Gradient-based optimization with learning rate scheduling
+  - Loss estimation on train/validation splits
+  - Model checkpointing and resumption
+  - Batch processing with configurable block sizes
 
 ### BPE Tokenizer (`Tokenizer/`)
-- **Byte Pair Encoding**: Efficient subword tokenization algorithm
-- **Vocabulary Management**: Customizable vocabulary size
-- **Corpus Processing**: Handles text encoding/decoding with learned merge operations
+- **Byte Pair Encoding Algorithm**: Hierarchical subword tokenization
+- **Vocabulary Management**: Customizable vocabulary size and merging strategies
+- **Corpus Processing**: 
+  - Support for local file loading
+  - Web page scraping and text extraction
+  - Batch encoding and decoding
+- **Efficient Encoding**: Reduces vocabulary size compared to character-level tokenization
 
 ### Utilities (`utils.py`)
-- Web page scraping and text extraction
+- Web page scraping with BeautifulSoup
 - Corpus loading from local files
-- URL management for training data
+- URL management for distributed training data
+- Text preprocessing utilities
 
-## Installation
+## 🚀 Installation
 
-1. Ensure you have Python 3.8+ and PyTorch installed
-2. Install required dependencies:
+### Requirements
+- Python 3.8+
+- PyTorch 1.9+
+- Additional dependencies: Hydra, OmegaConf, BeautifulSoup4, Requests, Regex
+
+### Setup
+
 ```bash
+# Clone or navigate to the project
+cd LLM
+
+# Install dependencies
 pip install torch hydra-core omegaconf beautifulsoup4 requests regex
 ```
 
-## Usage
+## 💻 Usage
 
 ### Training the BPE Tokenizer
 
-Train a BPE tokenizer with corpus URLs:
+Train the tokenizer on a corpus:
 ```bash
-./Tokenizer/run.sh TRAIN_BPE="true" RUN_TYPE="cli" CORPUS_PATH="Tokenizer/corpus.txt" CORPUS_URLS="https://raw.githubusercontent.com/karpathy/char-rnn/master/data/tinyshakespeare/input.txt" VOCAB_SIZE=500
+cd Tokenizer
+./run.sh TRAIN_BPE="true" \
+         RUN_TYPE="cli" \
+         CORPUS_PATH="corpus.txt" \
+         VOCAB_SIZE=500
+```
+
+Or with web-sourced corpus:
+```bash
+./run.sh TRAIN_BPE="true" \
+         RUN_TYPE="cli" \
+         CORPUS_URLS="https://raw.githubusercontent.com/karpathy/char-rnn/master/data/tinyshakespeare/input.txt" \
+         VOCAB_SIZE=500
 ```
 
 ### Training the GPT-2 Model
 
+Using Python API:
 ```python
 from GPT2.train import train
 from GPT2.GPT2 import GPT2
 
 # Initialize model
-model = GPT2(vocab_size=256, n_embed=384, num_heads=6, block_size=256)
+model = GPT2(
+    vocab_size=256,     # This vocab size means no new tokens
+    n_embed=384,        # Embedding dimension
+    num_heads=6,        # Number of attention heads
+    block_size=256,     # Context window size
+    num_layers=6        # Number of transformer layers
+)
 
 # Train the model
 train(
     model,
-    max_iter=5000,
+    warmup_iters=500,
+    max_iters=5000,
     batch_size=64,
     block_size=256,
     eval_interval=500,
@@ -74,9 +127,13 @@ train(
 )
 ```
 
-Train GPT-2 using the bigram approach:
+Using Hydra configuration:
 ```bash
-python3 -m GPT2.train +train_model="true" +generate="false"
+python3 -m GPT2.train \
+    +train_model="true" \
+    +generate="false" \
+    +max_iters=5000 \
+    +batch_size=64
 ```
 
 ### Using the BPE Tokenizer
@@ -84,19 +141,98 @@ python3 -m GPT2.train +train_model="true" +generate="false"
 ```python
 from Tokenizer.BPE import Tokenizer
 
-# Initialize tokenizer
-tokenizer = Tokenizer(corpus="your_corpus.txt", vocab_size=256)
+# Initialize and train tokenizer
+tokenizer = Tokenizer(corpus="corpus.txt", vocab_size=256)
+tokenizer.train()
 
-# Train and encode text
-encoded = tokenizer.train_encode(["hello world"])
+# Encode text
+tokens = tokenizer.encode("Hello world")
+
+# Decode tokens
+text = tokenizer.decode(tokens)
 ```
 
-## Key Components
+### Generating Text
+
+```python
+from GPT2.GPT2 import GPT2
+from Tokenizer.BPE import Tokenizer
+
+# Load model and tokenizer
+model = GPT2.load_checkpoint("path/to/checkpoint.pth")
+tokenizer = Tokenizer.load("path/to/tokenizer.pkl")
+
+# Generate text
+prompt = "Once upon a time"
+tokens = tokenizer.encode(prompt)
+generated = model.generate(tokens, max_new_tokens=100)
+output = tokenizer.decode(generated)
+print(output)
+```
+
+## 🏗️ Architecture Details
 
 ### Attention Mechanism
-- **Head**: Single self-attention head with query, key, and value projections
-- **MultiHead**: Combines multiple attention heads with projection layer
-- Includes dropout regularization and causal masking
+
+**Head** (Single Attention Head):
+- Computes scaled dot-product attention
+- Implements causal masking to prevent attending to future tokens
+- Formula: $\text{Attention}(Q, K, V) = \text{softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right)V$
+
+**MultiHead** (Multi-Head Attention):
+- Runs multiple attention heads in parallel
+- Concatenates outputs and projects to embedding dimension
+- Enables learning of different representation subspaces
+- Formula: $\text{MultiHead}(Q, K, V) = \text{Concat}(\text{head}_1, ..., \text{head}_h)W^O$
+
+### Transformer Block
+- Multi-head attention layer with residual connection
+- Position-wise feed-forward network (2 linear layers with ReLU)
+- Layer normalization before each sub-layer
+- Dropout for regularization
+
+### Training Strategy
+- Cosine learning rate scheduling with warmup
+- Gradient accumulation for larger effective batch sizes
+- Loss evaluation on both training and validation splits
+- Early stopping and model checkpointing
+
+## 📊 Output Organization
+
+Training outputs:
+```
+GPT2/
+└── Cache/
+    └── gpt2.pth
+```
+
+Each training run stores:
+- Model checkpoints (`.pth` files)
+- Training logs and metrics
+- Configuration files used for training
+
+## 🔧 Configuration
+
+Hydra configuration allows flexible parameter tuning. Common parameters:
+- `n_embed`: Embedding dimension (default: 384)
+- `num_heads`: Number of attention heads (default: 6)
+- `num_layers`: Number of transformer blocks (default: 6)
+- `block_size`: Context window size (default: 256)
+- `batch_size`: Training batch size (default: 64)
+- `learning_rate`: Initial learning rate (default: 3e-4)
+- `max_iters`: Maximum training iterations (default: 2000)
+- `eval_interval`: Evaluation frequency (default: 500)
+
+## 📚 References
+
+This implementation is inspired by:
+- [Attention is All You Need](https://arxiv.org/abs/1706.03762)
+- [Language Models are Unsupervised Multitask Learners (GPT-2 Paper)](https://d4mucfpksywv.cloudfront.net/better-language-models/language_models_are_unsupervised_multitask_learners.pdf)
+- [Byte Pair Encoding](https://arxiv.org/abs/1508.07909)
+
+## 📝 License
+
+This project is provided for educational and research purposes.
 
 ### Feed-Forward Network
 - Projects embeddings to 4x hidden dimension

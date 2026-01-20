@@ -6,7 +6,9 @@ from typing import Union, List
 class URLs:
     urls: Union[List[str], str, None]
 
-def get_corpus(corpus_path: str) -> str:
+def get_corpus(corpus_path: Union[None, str] = None) -> str:
+    if not corpus_path:
+        return ""
     print("Reading corpus_path", corpus_path)
     if not os.path.exists(corpus_path):
         raise FileNotFoundError()
@@ -29,8 +31,7 @@ def read_web_page(url: str):
         raise e
 
 def read_web_pages(urls: URLs) -> str:
-    if urls is None:
-        print(True)
+    if not urls:
         return []
     if isinstance(urls, str):
         return [read_web_page(url=urls)]
