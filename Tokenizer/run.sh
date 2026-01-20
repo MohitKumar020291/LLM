@@ -1,4 +1,4 @@
-#/bin/sh
+#!/usr/bin/bash
 
 base_dir=$(basename `pwd`)
 

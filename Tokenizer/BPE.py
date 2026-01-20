@@ -2,10 +2,11 @@ import regex
 from typing import Tuple, List, Dict, Union
 
 class Tokenizer:
-    def __init__(self, corpus, vocab_size: int = 276):
+    def __init__(self, corpus, vocab_size: int = 276, corpus_path: str = None):
         self.corpus = corpus
         self.vocab = {i: bytes([i]) for i in range(256)} # this version is cleaner as we work
         self.vocab_size = vocab_size
+        self.corpus_path = corpus_path
 
     def train_encode(self, string: list[str]) -> list[list[int]]:
         encodings = []
