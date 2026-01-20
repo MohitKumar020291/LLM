@@ -164,7 +164,7 @@ class GPT2(nn.Module):
             targets = targets.view(-1)
             logits_flatten = logits.view(B*T, -1)
             loss = F.cross_entropy(logits_flatten, targets)
-        
+
         if flatten:
             logits = logits.view(B*T, -1)
 
