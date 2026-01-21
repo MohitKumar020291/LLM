@@ -63,7 +63,7 @@ def train(
     for iter_ in range(max_iters):
         if iter_ % eval_interval == 0:
             losses = estimate_loss(model=model, train_dataloader=train_dataloader, val_dataloader=val_dataloader, eval_iters=eval_iters)
-            print("step %d: train loss %.4f, val loss %.4f" % (iter, losses['train'].mean(), losses['val'].mean()))
+            print("step %d: train loss %.4f, val loss %.4f" % (iter_, losses['train'].mean(), losses['val'].mean()))
 
         try:
             x_batches, y_batches = next(iter(train_dataloader)) #(B,T)
@@ -72,7 +72,6 @@ def train(
         logits, loss = model(x_batches, y_batches)
         optimizer.zero_grad()
         loss.backward()
-        print(loss)
         torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
         optimizer.step()
         scheduler.step()
