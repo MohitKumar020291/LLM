@@ -86,7 +86,6 @@ class AddNumData(Dataset):
         b = AddNumData.pad(b, self.max_size, False, True)
         c = AddNumData.pad(c, self.max_size, True, True) #have been reversed
 
-
         tokens = []
         for idx, num in enumerate([a, b, c]):
             if idx == 0:
