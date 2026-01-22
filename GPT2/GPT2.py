@@ -204,8 +204,8 @@ class Data(Dataset):
             previous_corpus_path: str = None, 
             previous_tokens_path: str = None
         ):
-        previous_corpus_path = previous_corpus_path or "GPT2/Cache/prev_corpus.txt"
-        previous_tokens_path = previous_tokens_path or "GPT2/Cache/prev_corpus.pkl"
+        previous_corpus_path = previous_corpus_path or "GPT2/Cache/prev_corpus_shakespear.txt"
+        previous_tokens_path = previous_tokens_path or "GPT2/Cache/prev_corpus_shakespear.pkl"
 
         self.device = device
         self.train_size = train_size
@@ -214,8 +214,6 @@ class Data(Dataset):
             with open(previous_tokens_path, 'rb') as file:
                 self.corpus_tokens = pkl.load(file)
         else:
-            print(os.listdir("GPT2"))
-            print(os.listdir("GPT2/Cache"))
             with open(previous_corpus_path, 'w') as fp:
                 pass
             with open(previous_corpus_path, 'w') as file:
