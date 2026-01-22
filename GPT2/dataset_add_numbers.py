@@ -5,7 +5,7 @@ from typing import Union
 
 
 class AddNumData(Dataset):
-    def __init__(self, max_num=100, device: torch.device = torch.device(type='cpu'), split_ab: bool = False):
+    def __init__(self, max_num=100, pad: bool = False, device: torch.device = torch.device(type='cpu'), split_ab: bool = False):
         self.max_num = max_num
         self.max_size = len(str(2 * (max_num - 1)))
         self.device = device
@@ -14,6 +14,10 @@ class AddNumData(Dataset):
             self.special = {'=': 10, '+': 11}  # digits 0-9, +, =
         else:
             self.special = {'=': self.max_num, '+': self.max_num+1}
+        self.reverse_special = {
+            v: k for k, v in self.special.items()
+        }
+        self.pad = pad
 
     def __len__(self):
         return 10_000_000
@@ -36,28 +40,44 @@ class AddNumData(Dataset):
             encodings.append(self.encode(ch))
         return encodings
 
-    def decode(self, string: str):
+    def decode(self, tokens: list[int]) -> str:
         """
             Default implementation if no specific type is matched.
             :param string: this should look like 0781110010080
-            :return : special character's idx changed to character and paddings are removed
         """
-        plus_size = len(str(self.special.get('+')))
-        equal_size = len(str(self.special.get('=')))
-        # print(string, self.max_size+plus_size, 2*self.max_size+plus_size)
-        a = int(string[:self.max_size])
-        b = int(string[self.max_size+plus_size : 2*self.max_size+plus_size])
-        c = int(string[2*self.max_size+plus_size+equal_size:][::-1]) # the predicted valye should be in the reverse order
-        # print(string, a, b, c)
-        return f"{a}+{b}={c}"
+        print(tokens)
+        string = ""
+        reverse = False
+        for idx, tk in enumerate(tokens):
+            if tk in self.reverse_special.keys():
+                tk_string = self.reverse_special.get(tk)
+                string += tk_string
+                if tk_string == "=":
+                    reverse = True
+            else:
+                if reverse:
+                    c = "".join(list(map(str, tokens[idx:])))[::-1]
+                    string += c
+                    break
+                string += str(tk)
+        return string
+        # plus_size = len(str(self.special.get('+')))
+        # equal_size = len(str(self.special.get('=')))
+        # # print(string, self.max_size+plus_size, 2*self.max_size+plus_size)
+        # a = int(string[:self.max_size])
+        # b = int(string[self.max_size+plus_size : 2*self.max_size+plus_size])
+        # c = int(string[2*self.max_size+plus_size+equal_size:][::-1]) # the predicted valye should be in the reverse order
+        # # print(string, a, b, c)
+        # return f"{a}+{b}={c}"
 
     @staticmethod
     def pad(*args):
-        if len(args) == 5:
-            a, b, c, max_size, return_string = args
-            a = str(a).zfill(max_size)
-            b = str(b).zfill(max_size)
-            c = str(c)[::-1].ljust(max_size, "0")
+        if len(args) == 6:
+            a, b, c, max_size, return_string, pad_flag = args
+            a = str(a).zfill(max_size) if pad_flag else a
+            b = str(b).zfill(max_size) if pad_flag else b
+            c = str(c)[::-1]
+            c = c.ljust(max_size, "0") if pad_flag else c
             if return_string:
                 return f"{a}+{b}={c}"
             return a, b, c
@@ -70,7 +90,7 @@ class AddNumData(Dataset):
             s = str(num)
             if c:
                 s = s[::-1]
-                return s.ljust(max_size, "0")
+                return s.ljust(max_size, "0") if pad_flag else s
             return s.zfill(max_size) if pad_flag else s
 
         else:
@@ -81,10 +101,10 @@ class AddNumData(Dataset):
         b = torch.randint(0, self.max_num, (1,)).item()
         c = a + b
 
-        # We have to pad the numbers to the max
-        a = AddNumData.pad(a, self.max_size, False, True)
-        b = AddNumData.pad(b, self.max_size, False, True)
-        c = AddNumData.pad(c, self.max_size, True, True) #have been reversed
+        # We have to pad the numbers to the max_size (if asked) and reverse the string
+        a = AddNumData.pad(a, self.max_size, False, self.pad)
+        b = AddNumData.pad(b, self.max_size, False, self.pad)
+        c = AddNumData.pad(c, self.max_size, True, self.pad) # have been reversed
 
         tokens = []
         for idx, num in enumerate([a, b, c]):

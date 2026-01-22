@@ -1,10 +1,11 @@
+import numpy as np
 import regex
 from typing import Tuple, List, Dict, Union
 
 class Tokenizer:
     def __init__(self, corpus, vocab_size: int = 276, corpus_path: str = None):
         self.corpus = corpus
-        self.vocab = {i: bytes([i]) for i in range(256)} # this version is cleaner as we work
+        self.vocab = {i: bytes([i]) for i in range(256)} # this version is cleaner
         self.vocab_size = vocab_size
         self.corpus_path = corpus_path
 
@@ -17,23 +18,20 @@ class Tokenizer:
     def get_stats(self, encodings: Union[List[int], List[List[int]]]) -> list[int]:
         counts = dict()
         if isinstance(encodings[0], int):
-            _type = "encoding"
+            # _type = "encoding"
             encodings = [encodings]
         for enc in encodings:
             try:
                 for pair in zip(enc, enc[1:]):
                     counts[pair] = counts.get(pair, 0) + 1
-            except:
-                # for enc in encodings:
-                #     if isinstance(enc, int):
-                #         print(enc)
-                #         print(encodings)
-                #         break
-                ...
+            except Exception as e:
+                raise e
+
         return counts
 
     def merge_most_common_pair_andrej(self, encodings: Union[List[List[int]], List[List[int]]], pair: tuple, idx: int) -> List[List[int]]:
         new_encodings = []
+        _type = None
         if isinstance(encodings[0], int):
             _type = "encoding"
             encodings = [encodings]
@@ -65,6 +63,7 @@ class Tokenizer:
             encodings = self.merge_most_common_pair_andrej(encodings=encodings, pair=pair, idx=idx)
             idx += 1
             num_merges -= 1
+            print(num_merges)
 
         return encodings, merges
 

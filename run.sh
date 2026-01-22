@@ -34,17 +34,17 @@ if [ "$TRAIN_MODEL" == "true" ]; then
     echo "Training GPT-2 Model with tokenizer at $TOKENIZER_PATH"
     if [ "$GENERATE" == "true" ]; then
         echo "Generating text with GPT-2 Model using tokenizer at $TOKENIZER_PATH"
-        python3 -m GPT2.train +train_model=true +tokenizer_path=$TOKENIZER_PATH +generate=true +training_corpus_urls=$TRAINING_CORPUS_URLS +training_corpus_path=$CORPUS_PATH
+        python3 -m GPT2.train_shakespear +train_model=true +tokenizer_path=$TOKENIZER_PATH +generate=true +training_corpus_urls=$TRAINING_CORPUS_URLS +training_corpus_path=$CORPUS_PATH
         exit 0
     else
         echo "Training GPT-2 Model without text generation using tokenizer at $TOKENIZER_PATH"
-        python3 -m GPT2.train +train_model=true +tokenizer_path=$TOKENIZER_PATH +generate=false +training_corpus_urls=$TRAINING_CORPUS_URLS +training_corpus_path=$CORPUS_PATH
+        python3 -m GPT2.train_shakespear +train_model=true +tokenizer_path=$TOKENIZER_PATH +generate=false +training_corpus_urls=$TRAINING_CORPUS_URLS +training_corpus_path=$CORPUS_PATH
         exit 0
     fi
 fi
 
 if [ "$GENERATE" == "true" ]; then
     echo "Generating text with GPT-2 Model using tokenizer at $TOKENIZER_PATH"
-    python3 -m GPT2.train +train_model=false +tokenizer_path=$TOKENIZER_PATH +generate=true +training_corpus_urls=$TRAINING_CORPUS_URLS +training_corpus_path=$CORPUS_PATH
+    python3 -m GPT2.train_shakespear +train_model=false +tokenizer_path=$TOKENIZER_PATH +generate=true +training_corpus_urls=$TRAINING_CORPUS_URLS +training_corpus_path=$CORPUS_PATH
     exit 0
 fi

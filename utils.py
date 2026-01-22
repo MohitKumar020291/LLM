@@ -1,7 +1,9 @@
 import os
 import requests
+import pickle as pkl
 from bs4 import BeautifulSoup
 from typing import Union, List
+from tokenizers import Tokenizer, models, pre_tokenizers, trainers
 
 class URLs:
     urls: Union[List[str], str, None]
@@ -34,9 +36,28 @@ def read_web_pages(urls: URLs) -> str:
     if not urls:
         return []
     if isinstance(urls, str):
-        return [read_web_page(url=urls)]
+        page = read_web_page(url=urls)
+        return [page]
     pages = []
     if isinstance(urls, list):
         for url in urls:
             pages.extend(read_web_page(url=url))
     return pages
+
+def get_hf_tokenizer(vocab_size: int, tokenizer_save_path: str, corpus: list[str] = None, corpus_url: str = None) -> Tokenizer:
+    corpus = corpus
+    tokenizer = Tokenizer(models.BPE())
+    tokenizer.pre_tokenizer = pre_tokenizers.Whitespace()
+    trainer = trainers.BpeTrainer(
+        vocab_size=vocab_size,  # Example vocabulary size
+        show_progress=True
+    )
+    corpus += read_web_page(url=corpus_url) if corpus_url else ""
+    tokenizer.train_from_iterator(corpus, trainer)
+    tokenizer.save("my_bpe_tokenizer.json")
+
+    # expected to be pickle file
+    with open(tokenizer_save_path, 'wb') as file:
+        pkl.dump(tokenizer, file)
+        print("hf tokenizer saved successfully")
+    return tokenizer

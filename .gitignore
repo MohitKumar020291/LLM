@@ -5,3 +5,4 @@ outputs/
 GPT2/Cache/
 *.pth
 *.pkl
+test_del.py
