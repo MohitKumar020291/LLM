@@ -270,3 +270,5 @@ Training runs generate timestamped outputs in the `outputs/` directory, organize
 
 - Models are cached in `GPT2/Cache/` for quick loading
 - Corpus files are stored in `Tokenizer/Cache/`
+
+python3 -m GPT2.train_shakespear +train_model="true" training_corpus_urls="https://www.gutenberg.org/cache/epub/100/pg100.txt" +tokenizer_path="Tokenizer/Cache/Tokenizers/tokenizer_fs.pkl" +model_path="GPT2/Cache/gpt_fs.pth"
