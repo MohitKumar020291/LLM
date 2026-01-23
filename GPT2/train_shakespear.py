@@ -1,8 +1,9 @@
-import torch
+import os, math, torch, hydra, pickle as pkl
+import torch.distributed as dist
+from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.utils.data import DataLoader
-import hydra
-from omegaconf import DictConfig
-import pickle as pkl
+from torch.utils.data.distributed import DistributedSampler
+from omegaconf import DictConfig, OmegaConf
 from pathlib import Path
 
 from utils import read_web_pages, get_corpus
@@ -10,8 +11,15 @@ from GPT2.GPT2 import GPT2, Data
 from Tokenizer.BPE import Tokenizer
 from tokenizers import Tokenizer as HFTokenizer
 
-import os
-import math
+
+def setup_ddp():
+    if "RANK" in os.environ:
+        dist.init_process_group(backend="nccl")
+        local_rank = int(os.environ["LOCAL_RANK"])
+        torch.cuda.set_device(local_rank)
+        dist.barrier()
+        return local_rank
+    return 0
 
 
 def lr_lambda(it, warmup_iters, max_iters):
@@ -20,195 +28,120 @@ def lr_lambda(it, warmup_iters, max_iters):
     progress = (it - warmup_iters) / (max_iters - warmup_iters)
     return 0.5 * (1.0 + math.cos(math.pi * progress))
 
+
 @torch.no_grad()
-def estimate_loss(
-    model: GPT2,
-    train_dataloader,
-    val_dataloader, 
-    eval_iters: int, 
-):
+def estimate_loss(model, train_loader, val_loader, eval_iters):
     out = {}
-    model.eval() #crucial
-    for dataloader, split in zip([train_dataloader, val_dataloader], ["train", "val"]):
+    model.eval()
+    for loader, split in [(train_loader, "train"), (val_loader, "val")]:
         losses = torch.zeros(eval_iters)
+        it = iter(loader)
         for k in range(eval_iters):
-            X, Y = next(iter(dataloader))
-            device = next(model.parameters()).device
-            X = X.to(device)
-            Y = Y.to(device)
-            # shift to GPU
-            logits, loss = model(X, Y)
+            try:
+                x, y = next(it)
+            except StopIteration:
+                it = iter(loader)
+                x, y = next(it)
+            x, y = x.to(next(model.parameters()).device), y.to(next(model.parameters()).device)
+            _, loss = model(x, y)
             losses[k] = loss.item()
         out[split] = losses
     model.train()
     return out
 
-def train(
-    model: GPT2,
-    train_dataloader: DataLoader,
-    val_dataloader: DataLoader,
-    warmup_iters: int = 500,
-    max_iters: int = 2000,
-    eval_interval: int = 500, 
-    eval_iters: int = 200,
-    learning_rate: float = 3e-4
-):
-    """
-        returns: optimizer used and whether to save the model details or not?
-    """
-    print("Starting training...")
-    loss = 0
-    optimizer = torch.optim.Adam(params=model.parameters(), lr=learning_rate, betas=(0.9, 0.95))
-    scheduler = torch.optim.lr_scheduler.LambdaLR(
-                    optimizer,
-                    lr_lambda=lambda it: lr_lambda(it, warmup_iters, max_iters)
-                )
-    for iter_ in range(max_iters):
-        if iter_ % eval_interval == 0:
-            losses = estimate_loss(model=model, train_dataloader=train_dataloader, val_dataloader=val_dataloader, eval_iters=eval_iters)
-            print("step %d: train loss %.4f, val loss %.4f" % (iter_, losses['train'].mean(), losses['val'].mean()))
 
-        try:
-            x_batches, y_batches = next(iter(train_dataloader)) #(B,T)
-        except Exception as e:
-            raise e
-        logits, loss = model(x_batches, y_batches)
-        optimizer.zero_grad()
-        loss.backward()
-        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
-        optimizer.step()
-        scheduler.step()
+def train(model, optimizer, train_loader, val_loader, train_sampler, num_epochs=10,
+          warmup_iters=500, max_iters=2000, eval_interval=500, eval_iters=200):
+    
+    try:
+        scheduler = torch.optim.lr_scheduler.LambdaLR(
+            optimizer, lr_lambda=lambda it: lr_lambda(it, warmup_iters, max_iters)
+        )
+    except Exception as e:
+        raise e
+    step = 0
+    for epoch in range(num_epochs):
+        if train_sampler is not None:
+            train_sampler.set_epoch(epoch)
+
+        for x, y in train_loader:
+            if step % eval_interval == 0 and (not dist.is_initialized() or dist.get_rank() == 0):
+                losses = estimate_loss(model, train_loader, val_loader, eval_iters)
+                print(f"step {step}: train {losses['train'].mean():.4f}, val {losses['val'].mean():.4f}")
+
+            x, y = x.to(next(model.parameters()).device), y.to(next(model.parameters()).device)
+            _, loss = model(x, y)
+
+            optimizer.zero_grad()
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+            optimizer.step()
+            scheduler.step()
+
+            step += 1
+
     return optimizer
 
-@hydra.main(version_base=None, config_path=None, config_name=None)
+
+@hydra.main(version_base=None, config_path="conf", config_name="config")
 def main(cfg: DictConfig):
-    try:
-        train_model = cfg.train_model
-    except:
-        train_model = False
-    try:
-        continue_training = cfg.continue_training
-    except:
-        continue_training = False
-    try:
-        estimate_loss_only = cfg.estimate_loss_only
-    except:
-        estimate_loss_only = False
-    try:
-        training_corpus_urls = cfg.training_corpus_urls
-    except:
-        training_corpus_urls = None
-        # idx = 100 #full shakespear
-        # corpus_url = f"https://www.gutenberg.org/cache/epub/{idx}/pg{idx}.txt"
-        # corpus_url = f"https://www.gutenberg.org/cache/epub/100/pg100.txt"
-    
-    try:
-        training_corpus_path = cfg.training_corpus_path
-    except:
-        training_corpus_path = None
 
-    default_tokenizer_path = "Tokenizer/Cache/Tokenizers/tokenizer.pkl"
-    try:
-        generate = cfg.generate
-    except:
-        generate = False
+    training_corpus_urls = OmegaConf.select(cfg, "training_corpus_urls", default=None)
+    training_corpus_path = OmegaConf.select(cfg, "training_corpus_path", default=None)
+    train_model = OmegaConf.select(cfg, "train_model", default=False)
+    tokenizer_path = OmegaConf.select(cfg, "tokenizer_path", default="Tokenizer/Cache/Tokenizers/tokenizer.pkl")
+    model_path = OmegaConf.select(cfg, "model_path", default="GPT2/Cache/gpt_s.pth")
+    generate = OmegaConf.select(cfg, "generate", default=False)
+    continue_training = OmegaConf.select(cfg, "continue_training", default=False)
+    lr=3e-4
 
-    try:
-        tokenizer_path = cfg.tokenizer_path
-    except:
-        print("Using default tokenizer path")
-        tokenizer_path = "Tokenizer/Cache/Tokenizers/tokenizer.pkl"
+    if not(os.path.exists(Path(model_path).parent)):
+        raise ValueError(f"{model_path}'s parent directory does not exist!")
 
-    if os.path.exists(tokenizer_path):
-        print("Tokenizer path exists:", tokenizer_path)
-    else:
-        print(f"Tokenizer path: {tokenizer_path} does not exist using default: {default_tokenizer_path}")
-        tokenizer_path = default_tokenizer_path
+    local_rank = setup_ddp()
+    device = torch.device(f"cuda:{local_rank}" if torch.cuda.is_available() else "cpu")
 
-    # I am just picking up a tokenizer irrespective of the corpus they have been trained on
-    with open(tokenizer_path, 'rb') as file:
-        tokenizer: Tokenizer = pkl.load(file)
+    with open(tokenizer_path, 'rb') as f:
+        tokenizer: Tokenizer = pkl.load(f)
 
-    # Initialize model
     vocab_size = len(tokenizer.vocab) if not isinstance(tokenizer, HFTokenizer) else tokenizer.get_vocab_size()
-    print("Vocab size:", vocab_size)
-    try:
-        model_path = cfg.model_path
-        # parent path should exist
-        if not os.path.exists(Path(model_path).parent):
-            print("model_path's parent directory does not exist")
-    except:
-        model_path = "GPT2/Cache/gpt2_shakespear.pth"
-
-    corpus = get_corpus(corpus_path=training_corpus_path)
-    pages = read_web_pages(urls=training_corpus_urls) if train_model else []
-    pages = "\n".join(pages)
-    corpus += "\n".join(pages.split("\n"))
-    print("===========CORPUS============")
-    print(corpus[:500])
-    print("=============================")
-    train_size = 0.9
-    block_size = 256
-    batch_size = 64
-    model = GPT2(vocab_size=vocab_size, block_size=block_size).to("cuda" if torch.cuda.is_available() else "cpu")
-    train_dataset = Data(
-        corpus=corpus, 
-        tokenizer=tokenizer, 
-        train_size=train_size,
-        split="train",
-        block_size=block_size,
-        device=next(model.parameters()).device
-    )
-    train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-    val_dataset = Data(
-        corpus=corpus, 
-        tokenizer=tokenizer, 
-        train_size=train_size,
-        split="val",
-        block_size=block_size,
-        device=next(model.parameters()).device
-    )
-    val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
-    print("Model initialized on device:", next(model.parameters()).device)
-
+    model = GPT2(vocab_size=vocab_size, block_size=256).to(device)
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr, betas=(0.9, 0.95))
     if continue_training:
-        checkpoint = torch.load(model_path, map_location=next(model.parameters()).device)
-        model.load_state_dict(checkpoint['model_state_dict'])
+        checkpoint = torch.load(model_path)
+        model.load_state_dict(checkpoint["model_state_dict"])
+        optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
 
-    # Training the model
-    if train_model and not estimate_loss_only:
-        try:
-            optimizer = train(
-                            model=model, 
-                            train_dataloader=train_dataloader, 
-                            val_dataloader=val_dataloader
-                        )
-            checkpoint = {
-                'model_state_dict': model.state_dict(),
-                'optimizer_state_dict': optimizer.state_dict(),
-            }
-            torch.save(checkpoint, model_path)
-        except Exception as e:
-            print("An error occurred during training:", e)
-    else:
-        checkpoint = torch.load(model_path, map_location=next(model.parameters()).device)
-        model.load_state_dict(checkpoint['model_state_dict'])
-        print("Model loaded from disk.")
+    if dist.is_initialized():
+        model = DDP(model, device_ids=[local_rank])
 
-    
-    if estimate_loss_only:
-        losses = estimate_loss(model=model, train_dataloader=train_dataloader, val_dataloader=val_dataloader, eval_iters=100)
-        print("train loss %.4f, val loss %.4f" % (losses['train'].mean(), losses['val'].mean()))
-        return
+    corpus = get_corpus(training_corpus_path)
+    pages = read_web_pages(training_corpus_urls) if train_model else []
+    corpus += "\n".join(pages)
 
-    # generating from the model
+    train_dataset = Data(corpus=corpus, tokenizer=tokenizer, train_size=0.9, split="train", block_size=256, device=device)
+    val_dataset   = Data(corpus=corpus, tokenizer=tokenizer, train_size=0.9, split="train", block_size=256, device=device)
+
+    train_sampler = DistributedSampler(train_dataset) if dist.is_initialized() else None
+    val_sampler   = DistributedSampler(val_dataset, shuffle=False) if dist.is_initialized() else None
+
+    train_loader = DataLoader(train_dataset, batch_size=64, sampler=train_sampler, shuffle=(train_sampler is None))
+    val_loader   = DataLoader(val_dataset,   batch_size=64, sampler=val_sampler,   shuffle=False)
+
+    try:
+        optimizer = train(model, optimizer, train_loader, val_loader, train_sampler) if train_model else None
+    except Exception as e:
+        raise e
+
+    if train_model and (not dist.is_initialized() or dist.get_rank() == 0):
+        torch.save({
+            "model_state_dict": model.module.state_dict() if isinstance(model, DDP) else model.state_dict(),
+            "optimizer_state_dict": optimizer.state_dict()
+        }, model_path)
+
     if generate:
-        context = torch.zeros((1, 1), dtype=torch.long, device=next(model.parameters()).device)
-        generated_tokens = model.generate(idx=context, max_new_tokens=500)
-        generated_text = tokenizer.decode(generated_tokens[0].tolist())
-        # print new lines if generated
-        print("===========GENERATED TEXT============")
-        print(generated_text)
+        ...
+
 
 if __name__ == "__main__":
     main()

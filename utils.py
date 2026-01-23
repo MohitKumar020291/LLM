@@ -28,6 +28,7 @@ def read_web_page(url: str):
         if page.status_code != 200:
             raise Exception(f"Page not reachable, status code: {page.status_code}")
         soup = BeautifulSoup(page.text, 'html.parser') #we create this soup object to leverage BeautifulSoup's text extraction capabilities
+        print(soup.get_text()[:100])
         return soup.get_text()
     except Exception as e:
         raise e
