@@ -1,0 +1,11 @@
+torch
+transformers
+tokenizers
+numpy
+pydantic
+hydra-core
+omegaconf
+regex
+requests
+beautifulsoup4
+# langchain
