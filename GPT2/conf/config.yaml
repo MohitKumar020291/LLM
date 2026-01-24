@@ -6,7 +6,7 @@ estimate_loss_only: false
 generate: false
 
 training_corpus_urls:
-  - https://raw.githubusercontent.com/karpathy/char-rnn/master/data/tinyshakespeare/input.txt
+  - https://www.gutenberg.org/cache/epub/100/pg100.txt
 
 #path for the mounted folder
 training_corpus_path: null
