@@ -95,8 +95,10 @@ def main(cfg: DictConfig):
     continue_training = OmegaConf.select(cfg, "continue_training", default=False)
     lr=3e-4
 
+    if training_corpus_path and not os.path.exists(training_corpus_path):
+        raise ValueError(f"Path {training_corpus_path} does not exist!")
     if not(os.path.exists(Path(model_path).parent)):
-        raise ValueError(f"{model_path}'s parent directory does not exist!")
+        raise ValueError(f"{model_path}'s parent directory = {Path(model_path).parent} does not exist!")
 
     local_rank = setup_ddp()
     device = torch.device(f"cuda:{local_rank}" if torch.cuda.is_available() else "cpu")

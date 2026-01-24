@@ -8,6 +8,7 @@ generate: false
 training_corpus_urls:
   - https://raw.githubusercontent.com/karpathy/char-rnn/master/data/tinyshakespeare/input.txt
 
+#path for the mounted folder
 training_corpus_path: null
 
 tokenizer_path: Tokenizer/Cache/Tokenizers/fs_tokenizer.pkl
