@@ -5,4 +5,5 @@ outputs/
 # GPT2/Cache/
 *.pth
 *.pkl
+!Tokenizer/Cache/Tokenizers/fs_tokenizer.pkl
 test_del.py
