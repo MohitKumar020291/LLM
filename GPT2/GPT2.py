@@ -203,33 +203,16 @@ class Data(Dataset):
             train_size: float = 0.9,
             block_size: int = 256,
             device: torch.device = "cpu",
-            split: str = "train",
-            use_previous_tokens: bool = True, 
-            previous_corpus_path: str = None, 
-            previous_tokens_path: str = None
+            split: str = "train"
         ):
-        previous_corpus_path = previous_corpus_path or "GPT2/Cache/prev_corpus_shakespear.txt"
-        previous_tokens_path = previous_tokens_path or "GPT2/Cache/prev_corpus_shakespear.pkl"
 
         self.device = device
         self.train_size = train_size
         self.block_size = block_size
-        if os.path.exists(previous_corpus_path) and use_previous_tokens and os.path.exists(previous_tokens_path):
-            with open(previous_tokens_path, 'rb') as file:
-                self.corpus_tokens = pkl.load(file)
-        else:
-            with open(previous_corpus_path, 'w') as fp:
-                pass
-            with open(previous_corpus_path, 'w') as file:
-                file.write(corpus)
-            print("Tokenizing the corpus and saving tokens for future use...")
-            # Corpus is seen but not in the previous_corpus.txt file
-            self.corpus_tokens = tokenizer.encode(corpus) if isinstance(corpus, str) else corpus
-            with open(previous_tokens_path, 'wb') as file:
-                pkl.dump(self.corpus_tokens, file)
-
+        self.corpus_tokens = tokenizer.encode(corpus) if isinstance(corpus, str) else corpus
         n = int(len(self.corpus_tokens)*train_size)
         self.data = self.corpus_tokens[:n] if split == "train" else self.corpus_tokens[n:]
+
 
     def __len__(self):
         return len(self.data) - self.block_size - 1
