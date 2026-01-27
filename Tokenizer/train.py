@@ -2,7 +2,7 @@
 # It includes reading different corpus
 
 import hydra
-from omegaconf import DictConfig
+from omegaconf import DictConfig, OmegaConf
 from Tokenizer.BPE import Tokenizer
 
 import os
@@ -10,23 +10,14 @@ import pickle as pkl
 from utils import read_web_pages, get_corpus, get_hf_tokenizer
 
 
-@hydra.main(config_path=None, config_name=None, version_base=None)
+@hydra.main(config_path="conf", config_name="config", version_base=None)
 def main(cfg: DictConfig):
-    try:
-        corpus_urls = cfg.corpus_urls
-    except:
-        corpus_urls = None
+    corpus_urls = list(OmegaConf.select(cfg, "corpus_urls", default=None))
+    train_hf = OmegaConf.select(cfg, "train_hf", default=False)
+    corpus_path = OmegaConf.select(cfg, "corpus_path", default=None)
+    hf_tokenizer_save_dir = OmegaConf.select(cfg, "hf_tokenizer_save_dir", default="Tokenizer/Cache/Tokenizers/HF_tokenizer")
+    vocab_size = OmegaConf.select(cfg, "vocab_size", default=256)
 
-    try:
-        train_hf = cfg.train_hf
-    except:
-        train_hf = False
-    
-    try:
-        corpus_path = cfg.corpus_path
-    except:
-        corpus_path = None
-    
     tokenizers_path = "Tokenizer/Cache/Tokenizers"
     if not os.path.exists(tokenizers_path):
         os.makedirs(tokenizers_path)
@@ -56,6 +47,7 @@ def main(cfg: DictConfig):
     corpus = get_corpus(corpus_path=corpus_path)
     # corpus = "" # I am doing this willingly
     corpus = read_web_pages(urls=corpus_urls)[0]
+    print(len(corpus))
     # corpus += "\n".join(pages)
     print("Read corpus:\n", corpus[:500], "\n")  # Print first 500 characters of the corpus for verification
 
@@ -65,17 +57,10 @@ def main(cfg: DictConfig):
     except Exception as e:
         raise e
 
-    try:
-        # if the corpus is empty, raise an error
-        vocab_size = int(cfg.vocab_size)
-    except:
-        if not corpus:
-            # raise ValueError("Corpus is empty. Please provide a valid corpus_path or corpus_urls in the config file.")
-            vocab_size = 256
     print("Training tokenizer with vocab size:", vocab_size)
     if train_hf:
         tokenizer_save_path = new_tokenizer_path
-        tokenizer = get_hf_tokenizer(vocab_size=vocab_size, corpus=[corpus], tokenizer_save_path=tokenizer_save_path)
+        tokenizer = get_hf_tokenizer(vocab_size=vocab_size, corpus=[corpus], tokenizer_save_path=tokenizer_save_path, hf_tokenizer_save_dir=hf_tokenizer_save_dir)
         sample_text = "Hello, world!"
         encoded = tokenizer.encode("Let's test the trained BPE tokenizer.")
         print(f"Tokens: {encoded.tokens}")

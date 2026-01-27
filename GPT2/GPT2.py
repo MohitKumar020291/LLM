@@ -3,7 +3,9 @@ import torch.nn as nn
 from torch.utils.data import Dataset
 import torch.nn.functional as F
 import pickle as pkl
+from typing import Union
 import os
+from tokenizers import Tokenizer as HFTokenizer
 
 from Tokenizer.BPE import Tokenizer
 
@@ -149,7 +151,9 @@ class GPT2(nn.Module):
         B, T = idx.shape
         # targets = targets.squeeze(1).view(B*T) if targets and targets.ndim == 3 else targets
         token_emb = self.embeddings(idx) # (B, T, n_embed)
-        position_emb = self.position_embedding(torch.arange(T, device=idx.device)) # (T, n_embed)
+        pos = torch.arange(T, device=idx.device).unsqueeze(0)
+        position_emb = self.position_embedding(pos)
+        # position_emb = self.position_embedding(torch.arange(T, device=idx.device)) # (T, n_embed)
         # print(token_emb.shape, position_emb.shape)
         x = token_emb + position_emb # (B, T, n_embed)
         x = self.blocks(x) # (B, T, n_embed)
@@ -195,7 +199,7 @@ class Data(Dataset):
     def __init__(
             self, 
             corpus: str,
-            tokenizer: Tokenizer,
+            tokenizer: Union[Tokenizer, HFTokenizer],
             train_size: float = 0.9,
             block_size: int = 256,
             device: torch.device = "cpu",
@@ -220,7 +224,7 @@ class Data(Dataset):
                 file.write(corpus)
             print("Tokenizing the corpus and saving tokens for future use...")
             # Corpus is seen but not in the previous_corpus.txt file
-            self.corpus_tokens = tokenizer.encode(corpus) if isinstance(corpus, str) else corpus # no need to encode if tokens are provided already!
+            self.corpus_tokens = tokenizer.encode(corpus) if isinstance(corpus, str) else corpus
             with open(previous_tokens_path, 'wb') as file:
                 pkl.dump(self.corpus_tokens, file)
 

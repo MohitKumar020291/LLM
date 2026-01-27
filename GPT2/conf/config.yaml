@@ -7,14 +7,21 @@ generate: false
 
 training_corpus_urls:
   - https://www.gutenberg.org/cache/epub/100/pg100.txt
+finetune_corpus_url: https://raw.githubusercontent.com/karpathy/char-rnn/master/data/tinyshakespeare/input.txt
 
 #path for the mounted folder
 training_corpus_path: null
 
-tokenizer_path: Tokenizer/Cache/Tokenizers/fs_tokenizer.pkl
-model_path: GPT2/Cache/gpt_s.pth
+tokenizer_path_pkl: Tokenizer/Cache/Tokenizers/fs_tokenizer.pkl
+tokenizer_path_hf: Tokenizer/Cache/Tokenizers/HF_tokenizer
+tokenizer_type: "hf"
+model_path: GPT2/Cache/gpt_fs.pth
 
 # Training hyperparameters
+vocab_size: 8_004 # 4 extra tokens
+n_embed: 384
+num_heads: 4
+n_layers: 6
 batch_size: 64
 block_size: 256
 train_size: 0.9

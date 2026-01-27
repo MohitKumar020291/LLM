@@ -61,14 +61,6 @@ class AddNumData(Dataset):
                     break
                 string += str(tk)
         return string
-        # plus_size = len(str(self.special.get('+')))
-        # equal_size = len(str(self.special.get('=')))
-        # # print(string, self.max_size+plus_size, 2*self.max_size+plus_size)
-        # a = int(string[:self.max_size])
-        # b = int(string[self.max_size+plus_size : 2*self.max_size+plus_size])
-        # c = int(string[2*self.max_size+plus_size+equal_size:][::-1]) # the predicted valye should be in the reverse order
-        # # print(string, a, b, c)
-        # return f"{a}+{b}={c}"
 
     @staticmethod
     def pad(*args):

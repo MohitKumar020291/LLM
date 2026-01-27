@@ -7,3 +7,5 @@ outputs/
 *.pkl
 !Tokenizer/Cache/Tokenizers/fs_tokenizer.pkl
 test_del.py
+ModelSaveTestDir
+unsloth_compiled_cache
