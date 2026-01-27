@@ -8,4 +8,4 @@ omegaconf
 regex
 requests
 beautifulsoup4
-# langchain
+unsloth

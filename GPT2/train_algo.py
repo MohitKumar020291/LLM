@@ -1,5 +1,5 @@
 import hydra
-from omegaconf import DictConfig
+from omegaconf import DictConfig, OmegaConfig
 import torch
 from torch.utils.data import DataLoader
 import random
@@ -25,25 +25,14 @@ def collate(batch):
 
 @hydra.main(version_base=None, config_path=None, config_name=None)
 def main(cfg: DictConfig):
+    train_model = OmegaConfig.select(cfg, "train_model", default=False)
+    pad = OmegaConfig.select(cfg, "pad", default=False)
+    model_path = OmegaConfig.select(cfg, "model_path", default="GPT2/Cache/gpt2_algo.pth")
+    split_ab = OmegaConfig.select(cfg, "split_ab", True)
 
-    # Model initialization
-    # vocab_size = len(range(10)) + 2 # + and =
     max_num = 1000
-    split_ab = True # for digits based splitting
     vocab_size = len(range(max_num)) + 2 if not split_ab else len(range(10)) + 2
-    try:
-        pad = cfg.pad
-    except:
-        pad = False
-    try:
-        model_path = cfg.model_path
-    except:
-        model_path = None
-    model_path = model_path or "GPT2/Cache/gpt2_algo.pth"
-    try:
-        train_model = cfg.train_model
-    except:
-        train_model = False
+
     gpt2_algo = GPT2(
         vocab_size=vocab_size
     ).to("cuda" if torch.cuda.is_available() else "cpu")
@@ -90,8 +79,6 @@ def main(cfg: DictConfig):
     print("context:", context)
     context: torch.Tensor = torch.tensor(context).reshape(1,-1).to(next(gpt2_algo.parameters()).device)
     generated_tokens = gpt2_algo.generate(idx=context, max_new_tokens=4)
-    # generated_tokens_str = [str(tk) for tk in generated_tokens[0].tolist()]
-    # generated_text = "".join(generated_tokens_str)
     print(andd.decode(generated_tokens.tolist()[0]))
 
 
