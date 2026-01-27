@@ -48,9 +48,7 @@ def read_web_pages(urls: URLs) -> str:
         return [page]
     pages = []
     if isinstance(urls, list):
-        print(True)
         for url in urls:
-            print(url)
             pages.append(read_web_page(url=url))
             print(len(pages))
     return pages

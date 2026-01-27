@@ -108,13 +108,12 @@ def train(model, optimizer, train_loader, val_loader, train_sampler,
 @hydra.main(version_base=None, config_path="conf", config_name="config")
 def main(cfg: DictConfig):
 
-    training_corpus_urls = OmegaConf.select(cfg, "training_corpus_urls", default=None)
+    training_corpus_urls = list(OmegaConf.select(cfg, "training_corpus_urls", default=None))
     training_corpus_path = OmegaConf.select(cfg, "training_corpus_path", default=None)
     train_model = OmegaConf.select(cfg, "train_model", default=False)
     tokenizer_path_pkl = OmegaConf.select(cfg, "tokenizer_path_pkl", default="Tokenizer/Cache/Tokenizers/tokenizer.pkl")
     tokenizer_path_hf = OmegaConf.select(cfg, "tokenizer_path_hf", default="Tokenizer/Cache/Tokenizers/HFTokenizer")
     tokenizer_type = OmegaConf.select(cfg, "tokenizer_type", default="hf")
-    print(tokenizer_type)
     tokenizer_path = tokenizer_path_hf if tokenizer_type == "hf" else tokenizer_path_pkl
     model_path = OmegaConf.select(cfg, "model_path", default="GPT2/Cache/gpt_s.pth")
     generate = OmegaConf.select(cfg, "generate", default=False)
