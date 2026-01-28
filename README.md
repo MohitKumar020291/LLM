@@ -13,7 +13,6 @@ pip -r requirements.txt
 ### Train a BPE Tokenizer
 
 ```bash
-cd Tokenizer
 ./run.sh TRAIN_BPE="true" RUN_TYPE="cli" CORPUS_PATH="corpus.txt" VOCAB_SIZE=500
 ```
 
@@ -27,7 +26,7 @@ Or train on web content:
 ### Train the GPT-2 Model
 
 ```bash
-python3 -m GPT2.train +train_model="true" +max_iters=5000 +batch_size=64
+python3 -m GPT2.train_shakespear
 ```
 
 Or with Python API:
