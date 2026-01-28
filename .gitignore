@@ -12,3 +12,4 @@ unsloth_compiled_cache
 Tokenizer/Cache/Tokenizers/*.txt
 !Tokenizer/Cache/Tokenizers/fs_tokenizer.pkl.txt
 finetuned_model/
+PROJECT_REPORT.md

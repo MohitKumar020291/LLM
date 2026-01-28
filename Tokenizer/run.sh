@@ -23,7 +23,7 @@ if [ "$RUN_TYPE" == "cli" ]; then
       # There should be something called run default
       file_name="Tokenizer/train"
       file_name="${file_name//\//.}"
-      echo $file_name
+      echo python3 -m $file_name +corpus_path=$CORPUS_PATH +corpus_urls=$CORPUS_URLS +vocab_size=$VOCAB_SIZE
       python3 -m $file_name +corpus_path=$CORPUS_PATH +corpus_urls=$CORPUS_URLS +vocab_size=$VOCAB_SIZE
     elif [ "$TRAIN_STACKED_TOKENIZER" == "true" ]; then
       python3 $base_dir/Tokenizer/Experiment/stacked_tokenizer.py +model_name=$MODEL_NAME
